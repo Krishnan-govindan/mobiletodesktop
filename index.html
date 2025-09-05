@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mobile‑to‑Desktop File Sharing</title>
+    <!-- External stylesheet for clean, responsive design -->
+    <link rel="stylesheet" href="style.css" />
+    <!--
+      This script block imports only the Firebase modules we need. Using modular
+      imports keeps the bundle lean and makes it easy to tree‑shake unused
+      functionality. We also initialise your app with the configuration
+      supplied in the prompt. Refer to the Firebase documentation for examples
+      of writing data with addDoc()【244926119706079†L3572-L3581】 and listening
+      to updates with onSnapshot()【78164551004352†L3007-L3013】.
+    -->
+    <script type="module">
+      // Import the functions you need from the SDKs you need
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        addDoc,
+        query,
+        orderBy,
+        onSnapshot,
+        serverTimestamp,
+      } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+      import {
+        getStorage,
+        ref,
+        uploadBytes,
+        getDownloadURL,
+      } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-storage.js";
+
+      // Your web app's Firebase configuration
+      // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+      const firebaseConfig = {
+        apiKey: "AIzaSyCJ-1_3cmKOJYP7b1k3bKbqgg4qzH4Wsd8",
+        authDomain: "mobiletodesktop-23f56.firebaseapp.com",
+        projectId: "mobiletodesktop-23f56",
+        storageBucket: "mobiletodesktop-23f56.firebasestorage.app",
+        messagingSenderId: "462513019391",
+        appId: "1:462513019391:web:48485ebf26ea664230efca",
+        measurementId: "G-X92QWZHG80",
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      const storage = getStorage(app);
+
+      // Keep global state for loaded messages and search filter
+      let messagesData = [];
+      let searchQuery = '';
+      const messagesCollection = collection(db, 'messages');
+
+      // Helper function to escape HTML characters before rendering text
+      function escapeHtml(str) {
+        return str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      // Send a new message: handles both text and file uploads
+      window.sendMessage = async function () {
+        const messageInput = document.getElementById('messageInput');
+        const fileInput = document.getElementById('fileInput');
+        const text = messageInput.value.trim();
+        const file = fileInput.files[0];
+
+        // Require some content
+        if (!text && !file) {
+          alert('Please enter a message or choose a file.');
+          return;
+        }
+
+        try {
+          // If a file is selected, upload it to Storage first
+          if (file) {
+            const filePath = `uploads/${Date.now()}_${file.name}`;
+            const storageRef = ref(storage, filePath);
+            await uploadBytes(storageRef, file);
+            const url = await getDownloadURL(storageRef);
+            await addDoc(messagesCollection, {
+              text: text || null,
+              fileUrl: url,
+              fileName: file.name,
+              fileType: file.type,
+              timestamp: serverTimestamp(),
+            });
+          } else {
+            // Otherwise just save the text message
+            await addDoc(messagesCollection, {
+              text: text,
+              timestamp: serverTimestamp(),
+            });
+          }
+
+          // Reset inputs
+          messageInput.value = '';
+          fileInput.value = '';
+        } catch (error) {
+          console.error('Error sending message:', error);
+        }
+      };
+
+      // Listen for real‑time updates from Firestore
+      function loadMessages() {
+        const q = query(messagesCollection, orderBy('timestamp', 'desc'));
+        onSnapshot(
+          q,
+          (snapshot) => {
+            messagesData = [];
+            snapshot.forEach((doc) => {
+              messagesData.push({ id: doc.id, ...doc.data() });
+            });
+            displayMessages();
+          },
+          (error) => {
+            console.error('Failed to retrieve messages:', error);
+          },
+        );
+      }
+
+      // Render messages onto the page
+      function displayMessages() {
+        const container = document.getElementById('messages');
+        container.innerHTML = '';
+
+        // Filter by search query
+        const filtered = messagesData.filter((msg) => {
+          const lowerSearch = searchQuery.toLowerCase();
+          const text = msg.text ? msg.text.toLowerCase() : '';
+          const fileName = msg.fileName ? msg.fileName.toLowerCase() : '';
+          return (
+            !searchQuery ||
+            text.includes(lowerSearch) ||
+            fileName.includes(lowerSearch)
+          );
+        });
+
+        // Sort ascending by timestamp (older messages first)
+        filtered.sort((a, b) => {
+          const aTime = a.timestamp?.seconds || 0;
+          const bTime = b.timestamp?.seconds || 0;
+          return aTime - bTime;
+        });
+
+        filtered.forEach((msg) => {
+          const msgElement = document.createElement('div');
+          msgElement.className = 'message';
+          msgElement.innerHTML = renderMessage(msg);
+          container.appendChild(msgElement);
+        });
+
+        // Always scroll to bottom to see the newest message
+        container.scrollTop = container.scrollHeight;
+      }
+
+      // Generate HTML for a single message (text and/or file)
+      function renderMessage(msg) {
+        // Compute human readable timestamp
+        const timestampMs = msg.timestamp && msg.timestamp.seconds
+          ? msg.timestamp.seconds * 1000
+          : Date.now();
+        const date = new Date(timestampMs);
+        const formattedTime = date.toLocaleString();
+        let contentHtml = '';
+
+        if (msg.text) {
+          contentHtml += `<p class="text-content">${escapeHtml(msg.text)}</p>`;
+        }
+        if (msg.fileUrl) {
+          // If the file is an image show preview, otherwise provide a link
+          if (msg.fileType && msg.fileType.startsWith('image/')) {
+            contentHtml += `
+              <div class="file-preview">
+                <img src="${msg.fileUrl}" alt="${escapeHtml(
+                  msg.fileName || ''
+                )}" />
+              </div>
+            `;
+          } else {
+            contentHtml += `
+              <div class="file-preview">
+                <a href="${msg.fileUrl}" target="_blank" rel="noopener">
+                  ${escapeHtml(msg.fileName || 'Download file')}
+                </a>
+              </div>
+            `;
+          }
+        }
+
+        return `
+          <div class="message-content">
+            ${contentHtml}
+            <span class="timestamp">${formattedTime}</span>
+          </div>
+        `;
+      }
+
+      // Update search query and re-render messages
+      window.onSearchChange = function (inputElement) {
+        searchQuery = inputElement.value;
+        displayMessages();
+      };
+
+      // Kick off the listener once the DOM is ready
+      window.addEventListener('DOMContentLoaded', loadMessages);
+    </script>
+  </head>
+  <body>
+    <div class="chat-container">
+      <div class="header">
+        <h2>File Share Chat</h2>
+      </div>
+      <!-- Search bar for filtering messages by content or file name -->
+      <div class="search-bar">
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="Search messages..."
+          oninput="onSearchChange(this)"
+        />
+      </div>
+      <!-- Container for all messages -->
+      <div class="messages" id="messages"></div>
+      <!-- Message and file input area at the bottom -->
+      <div class="input-area">
+        <textarea
+          id="messageInput"
+          placeholder="Type your message here..."
+        ></textarea>
+        <input type="file" id="fileInput" />
+        <button id="sendBtn" onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+  </body>
+</html>

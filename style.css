@@ -1,0 +1,161 @@
+/*
+  Global styles for the file‑sharing chat. The layout uses flexbox to
+  vertically distribute the header, message list and input area inside a
+  container. Messages are centred to mimic a self‑chat and the design
+  adapts gracefully to mobile screens.
+*/
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f6f8fc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.chat-container {
+  width: 90%;
+  max-width: 600px;
+  height: 90vh;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.header {
+  background: #4caf50;
+  padding: 10px;
+  text-align: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.search-bar {
+  padding: 10px;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  flex-shrink: 0;
+}
+
+.search-bar input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  background: #fdfdfd;
+}
+
+.message {
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.message-content {
+  max-width: 90%;
+  background: #f1f1f1;
+  padding: 8px 12px;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  word-wrap: break-word;
+}
+
+.message-content .text-content {
+  margin: 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.message-content .file-preview img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin-top: 5px;
+  border-radius: 4px;
+}
+
+.message-content .file-preview a {
+  display: block;
+  margin-top: 5px;
+  color: #2a69ac;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.message-content .timestamp {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: #999;
+  text-align: right;
+}
+
+.input-area {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-top: 1px solid #e0e0e0;
+  background: #fafafa;
+  flex-shrink: 0;
+}
+
+.input-area textarea {
+  flex: 1;
+  resize: none;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  height: 50px;
+  margin-right: 5px;
+}
+
+.input-area input[type='file'] {
+  margin-right: 5px;
+  font-size: 14px;
+}
+
+.input-area button {
+  padding: 8px 12px;
+  background: #4caf50;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.input-area button:hover {
+  background: #45a049;
+}
+
+/*
+  Media query for smaller screens. We adjust the height of the chat
+  container and message input to better suit a mobile experience.
+*/
+@media (max-width: 600px) {
+  .chat-container {
+    height: 95vh;
+  }
+
+  .message-content {
+    max-width: 100%;
+  }
+
+  .input-area textarea {
+    height: 40px;
+  }
+}
